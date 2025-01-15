@@ -1,0 +1,69 @@
+k8sDemoAppMessage: "Hello World!"
+
+
+replicaCount: 1
+hpa:
+  minReplicas: 1
+  maxReplicas: 10
+  behavior:
+    scaleUp:
+      policies:
+        - type: Pods
+          value: 100       # Increase by 100% of the current replica count
+          periodSeconds: 5 # Evaluate every 60 seconds
+        - type: Pods
+          value: 2         # Add up to 4 pods at a time
+          periodSeconds: 5 # Evaluate every 60 seconds
+      stabilizationWindowSeconds: 120 # Stabilization window for scale-up actions
+    scaleDown:
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 5
+        - type: Pods
+          value: 2
+          periodSeconds: 5
+      stabilizationWindowSeconds: 300
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+
+image:
+  repository: jschell12/k8s-demo-app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/subnets: subnet-0acbf910e309ca6d6,subnet-0e0b0cfb9e5d92f39
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: "100m"       # Set CPU request
+    memory: "128Mi"   # Set memory request
+  limits:
+    cpu: "200m"       # Optional: Set CPU limit
+    memory: "256Mi"   # Optional: Set memory limit
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
