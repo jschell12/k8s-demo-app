@@ -66,11 +66,11 @@ jobs:
             --set image.repository=ghcr.io/${{ github.repository_owner }}/k8s-demo-app \
             --set image.tag=latest \
             --wait
-        continue-on-error: true # Ensures the deploy job completes and the workflow proceeds to the rollback step in case of failure.
+        continue-on-error: true # Ensures the deploy_main job completes and the workflow proceeds to the rollback step in case of failure.
 
   rollback_main:
-    needs: deploy
-    if: failure() # Only run rollback if the deploy job fails
+    needs: deploy_main
+    if: failure() # Only run rollback if the deploy_main job fails
     runs-on: ubuntu-latest
 
     steps:
