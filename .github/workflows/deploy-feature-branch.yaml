@@ -65,6 +65,8 @@ jobs:
       # Create a temporary namespace
       - name: Create namespace
         run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
           kubectl create namespace ${{ env.branch_name }}
 
       # Deploy the Helm chart
@@ -121,4 +123,6 @@ jobs:
       # Delete namespace
       - name: Delete namespace
         run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
           kubectl delete namespace ${{ env.branch_name }}
