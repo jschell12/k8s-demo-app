@@ -10,11 +10,11 @@ hpa:
       policies:
         - type: Pods
           value: 100       # Increase by 100% of the current replica count
-          periodSeconds: 5 # Evaluate every 60 seconds
+          periodSeconds: 5 # Evaluate every 5 seconds
         - type: Pods
-          value: 2         # Add up to 4 pods at a time
-          periodSeconds: 5 # Evaluate every 60 seconds
-      stabilizationWindowSeconds: 120 # Stabilization window for scale-up actions
+          value: 2         # Add up to 2 pods at a time
+          periodSeconds: 5 # Evaluate every 5 seconds
+      stabilizationWindowSeconds: 10 # Stabilization window for scale-up actions
     scaleDown:
       policies:
         - type: Percent
@@ -23,14 +23,14 @@ hpa:
         - type: Pods
           value: 2
           periodSeconds: 5
-      stabilizationWindowSeconds: 300
+      stabilizationWindowSeconds: 10
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 50
+          averageUtilization: 20
 
 image:
   repository: jschell12/k8s-demo-app

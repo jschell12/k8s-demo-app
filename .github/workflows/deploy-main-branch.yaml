@@ -1,0 +1,105 @@
+name: Deploy Main Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to tag the release and Docker image (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev # Specify the environment here
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      # Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}:${{ github.event.inputs.version }} .
+          docker tag ghcr.io/${{ github.repository }}:${{ github.event.inputs.version }} ghcr.io/${{ github.repository }}:latest
+
+      # Push the Docker image
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository }}:${{ github.event.inputs.version }}
+          docker push ghcr.io/${{ github.repository }}:latest
+
+      # Set up Kubernetes and Helm
+      - name: Set up Kubernetes
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      # Deploy the Helm chart
+      - name: Deploy Helm chart
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+          helm upgrade --force --install k8s-demo-app ./charts/k8s-demo-app \
+            --namespace default \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/k8s-demo-app \
+            --set image.tag=latest \
+            --wait
+        continue-on-error: true # Ensures the deploy job completes and the workflow proceeds to the rollback step in case of failure.
+
+  rollback:
+    needs: deploy
+    if: failure() # Only run rollback if the deploy job fails
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      # Set up Kubernetes and Helm
+      - name: Set up Kubernetes
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      # Rollback the Helm chart
+      - name: Rollback Helm chart
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+          helm rollback k8s-demo-app 1 --namespace default

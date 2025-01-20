@@ -29,7 +29,7 @@ spec:
   metrics:
 {{- range .Values.hpa.metrics }}
     - type: {{ .type }}
-      {{ .type }}:
+      resource:
         name: {{ .resource.name }}
         target:
           type: {{ .resource.target.type }}
