@@ -95,8 +95,7 @@ jobs:
         id: deleted_branch
         run: |
           FULL_REF=${{ github.event.ref }}
-          echo $FULL_REF
-          BRANCH_NAME=$(echo "${FULL_REF}" | sed -E 's|^refs/heads/.+?/([^/]+)$|\1|')
+          BRANCH_NAME=$(echo "${FULL_REF}" | sed -E 's|[^/]+/(.+)|\1|')
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_ENV
 
       # Configure AWS credentials
