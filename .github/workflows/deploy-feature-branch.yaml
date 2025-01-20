@@ -67,7 +67,7 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           export KUBECONFIG=kubeconfig
-          kubectl create namespace ${{ env.branch_name }}
+          kubectl create namespace ${{ env.branch_name }} --dry-run=client -o yaml | kubectl apply -f -
 
       # Deploy the Helm chart
       - name: Deploy Helm chart
