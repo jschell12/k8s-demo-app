@@ -1,10 +1,10 @@
 name: Deploy Feature Branch
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - feature/*
+
   delete:
     branches:
       - feature/*
@@ -83,6 +83,7 @@ jobs:
   cleanup_feature:
     if: github.event_name == 'delete'
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       # Checkout the repository
@@ -92,7 +93,10 @@ jobs:
       # Extract the deleted branch name
       - name: Get deleted branch name
         id: deleted_branch
-        run: echo "branch_name=${{ github.event.ref##*/ }}" >> $GITHUB_ENV
+        run: |
+          FULL_REF=${{ github.event.ref }}
+          BRANCH_NAME=$(echo "${FULL_REF}" | sed -E 's|^refs/heads/.+?/([^/]+)$|\1|')
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_ENV
 
       # Configure AWS credentials
       - name: Configure AWS Credentials
