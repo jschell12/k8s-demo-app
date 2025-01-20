@@ -72,10 +72,7 @@ jobs:
     needs: deploy_main
     if: failure() # Only run rollback if the deploy_main job fails
     runs-on: ubuntu-latest
-<<<<<<< Updated upstream
-=======
     environment: dev
->>>>>>> Stashed changes
 
     steps:
       # Checkout the repository
