@@ -8,7 +8,7 @@ on:
         required: true
 
 jobs:
-  deploy:
+  deploy_main:
     runs-on: ubuntu-latest
     environment: dev # Specify the environment here
 
@@ -68,7 +68,7 @@ jobs:
             --wait
         continue-on-error: true # Ensures the deploy job completes and the workflow proceeds to the rollback step in case of failure.
 
-  rollback:
+  rollback_main:
     needs: deploy
     if: failure() # Only run rollback if the deploy job fails
     runs-on: ubuntu-latest

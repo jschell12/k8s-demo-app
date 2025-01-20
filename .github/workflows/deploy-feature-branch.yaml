@@ -10,7 +10,7 @@ on:
       - feature/*
 
 jobs:
-  deploy:
+  deploy_feature:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: dev
@@ -78,7 +78,7 @@ jobs:
             --set image.tag=${{ env.branch_name }} \
             --wait
 
-  cleanup:
+  cleanup_feature:
     if: github.event_name == 'delete'
     runs-on: ubuntu-latest
 
