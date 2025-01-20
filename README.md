@@ -8,18 +8,17 @@ The application is also published as a container image [quay.io/stepanstipl/k8s-
 
 ![screenshot](imgs/screenshot.png)
 
-## Deployment
-
-See `deploy.yaml` for simple deployment example.
+### Deployment
 
 The application exposes health-check `/healthz` endpoint.
 
-## Configuration
+### Configuration
 
 Serving port (defaults to `8080`) can be parametrised using the `-listen-addr` flag or `K8S_DEMO_APP_LISTEN_ADDR` environment variable.
 
 Displayed message can be parametrised by setting the `K8S_DEMO_APP_MESSAGE` variable.
 
+---
 ## Setup Infrastructure with Terraform
 
 This will set up a node group for the pod(s) to run on. It will also create the necessary IAM role and policy for the AWS Load Balancer Controller to create resources.
@@ -37,21 +36,19 @@ This will set up a node group for the pod(s) to run on. It will also create the 
 3. ```sh
    $ AWS_PROFILE=angi terraform apply
    ```
+---
+## AWS Load Balancer controller
 
-## Installing AWS Load Balancer controller
+The AWS Load Balancer Controller is required to manage **AWS Elastic Load Balancers (ALBs and NLBs)** for Kubernetes services and ingress resources. It automatically provisions and configures load balancers to route traffic to Kubernetes pods, enabling seamless integration with AWS services. Without it, Kubernetes cannot natively manage AWS-specific load balancers for ingress and service traffic.
 
-### Prerequisites
-
-You must apply the terraform configuration as it also creates the necessary IAM role and policy for the controller to create ALB resources
-
-#### Steps
+### Installation
 
 1. Add the EKS chart repo to helm
     ```sh
     $ helm repo add eks https://aws.github.io/eks-charts
     ```
 
-2.  Make sure the CRDs are up-to-date
+2. Make sure the CRDs are up-to-date
     ```sh
     $ kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master"
     ```
@@ -67,110 +64,142 @@ You must apply the terraform configuration as it also creates the necessary IAM 
     ```sh
     $ helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=eks-joshua-schell
     ```
+---
+## Metrics Server
 
-## Install metrics server
+The Metrics Server is essential for enabling Kubernetes Horizontal Pod Autoscaling (HPA), as it collects and exposes resource usage metrics (CPU and memory) via the Kubernetes Resource Metrics API. HPA relies on this data to scale pod replicas. Without the Metrics Server, the metrics.k8s.io API will not provide data, and HPA will not function.
+
+### Installation
 
 ```sh
-helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm repo update
+$ helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+$ helm repo update
 
-helm install metrics-server metrics-server/metrics-server \
+$ helm install metrics-server metrics-server/metrics-server \
   --namespace kube-system \
   --set args="{--kubelet-insecure-tls,--kubelet-preferred-address-types=InternalIP}"
 ```
-
+---
 ## Load testing
 
 ```sh
 $ for i in {1..100000000}; do wget -q -O- http://k8s-demo-app-chart-k8s-demo-app & done
 ```
-
+---
 ## Github Actions
 
-#### **Workflow Name**
-**Deploy Main Branch**
+### **Deploy Main Branch**
 
----
+This GitHub Action automates the deployment and rollback of the main branch. It allows manual triggering with a specific Docker image version and provides error handling to automatically rollback in case of deployment failures.
 
-#### **Triggers**
-- **`workflow_dispatch`**: Manually triggered, requiring a `version` input to specify the Docker image and release version (e.g., `v1.0.0`).
+#### **Key Jobs**
 
----
-
-#### **Jobs**
-
-1. **`deploy` Job**
-   - **Environment**: `dev`.
-   - **Runs-on**: `ubuntu-latest`.
+1. **`deploy_main`**
+   - **Triggered by `workflow_dispatch` (manual trigger).**
+   - **Purpose**: Deploy resources for the main branch.
+   - **Inputs**: Requires a `version` input to tag the Docker image and Helm deployment.
    - **Steps**:
-     1. **Checkout Repository**:
-        - Checks out the repository to fetch source code.
-     2. **AWS Credentials Configuration**:
-        - Configures AWS credentials using secrets for interaction with AWS services.
-     3. **Docker Login**:
-        - Logs in to GitHub Container Registry (GHCR) using the `GITHUB_TOKEN`.
-     4. **Build Docker Image**:
-        - Builds a Docker image tagged with the provided `version` and `latest`.
-     5. **Push Docker Image**:
-        - Pushes the `version`-tagged and `latest` Docker images to GHCR.
-     6. **Setup Kubernetes and Helm**:
-        - Installs and configures `kubectl` and `helm`.
-     7. **Deploy Helm Chart**:
-        - Deploys or upgrades the `k8s-demo-app` Helm chart in the `default` namespace using the Docker image tag (`version`).
-        - Uses `--force` and `--wait` to ensure the deployment is applied immediately and waits for the resources to become ready.
-     8. **Error Handling**:
-        - Allows the job to proceed even if this step fails (`continue-on-error: true`).
+     - **Checkout Code**:
+       - Fetches the repository code.
+     - **AWS Configuration**:
+       - Configures AWS credentials for interacting with Kubernetes in AWS.
+     - **Docker Login**:
+       - Authenticates with GitHub Container Registry (GHCR) using `GITHUB_TOKEN`.
+     - **Build and Push Docker Image**:
+       - Builds a Docker image tagged with the provided `version` and `latest`.
+       - Pushes the images to GHCR.
+     - **Set Up Kubernetes and Helm**:
+       - Installs and configures `kubectl` and `helm` for deployment.
+     - **Deploy Helm Chart**:
+       - Deploys or upgrades the `k8s-demo-app` Helm chart in the `default` namespace.
+       - Configures the chart to use the latest Docker image and waits for the deployment to complete.
+       - **Error Handling**: Uses `continue-on-error: true` to allow the job to proceed to the rollback step if deployment fails.
 
----
-
-2. **`rollback` Job**
-   - **Triggered**: Only runs if the `deploy` job fails (`if: failure()`).
-   - **Needs**: Depends on the `deploy` job.
-   - **Runs-on**: `ubuntu-latest`.
+2. **`rollback_main`**
+   - **Triggered if `deploy_main` fails (`if: failure()`).**
+   - **Purpose**: Rollback to the last successful Helm release.
    - **Steps**:
-     1. **Checkout Repository**:
-        - Fetches source code.
-     2. **AWS Credentials Configuration**:
-        - Reuses AWS credentials setup for interaction with AWS services.
-     3. **Setup Kubernetes and Helm**:
-        - Installs and configures `kubectl` and `helm`.
-     4. **Helm Rollback**:
-        - Rolls back the `k8s-demo-app` release in the `default` namespace to the previous revision (`1`).
-
----
+     - **Checkout Code**:
+       - Fetches the repository code for Helm rollback operations.
+     - **AWS Configuration**:
+       - Reuses AWS credentials for Kubernetes interaction.
+     - **Set Up Kubernetes and Helm**:
+       - Installs and configures `kubectl` and `helm` for rollback.
+     - **Rollback Helm Chart**:
+       - Executes a rollback of the `k8s-demo-app` Helm release to the previous revision (`1`) in the `default` namespace.
 
 #### **Key Features**
-- **Error Handling**:
-  - The `deploy` job allows failures and triggers the `rollback` job to revert to the previous Helm chart release.
-- **Environment-Specific Deployment**:
-  - Targets the `dev` environment, configurable via Helm and Kubernetes.
 - **Manual Trigger**:
-  - Allows users to provide a specific `version` for releases.
-- **Docker and Helm Integration**:
-  - Builds and pushes Docker images to GHCR and deploys the application using Helm.
+  - Allows users to deploy the main branch by specifying a version (e.g., `v1.0.0`).
+- **Error Handling and Rollback**:
+  - Automatically rolls back the Helm release if the deployment fails.
+- **Environment-Specific Deployment**:
+  - Targets the `default` namespace in the Kubernetes `dev` environment.
+- **Versioned and Latest Docker Images**:
+  - Builds and tags Docker images with both the specified version and `latest`.
 
----
+#### **Use Cases**
+1. **Main Branch Deployment**:
+   - Deploys the `k8s-demo-app` to the `default` namespace for production or staging purposes.
+2. **Error Recovery**:
+   - Automatically reverts the deployment to a stable state in case of issues.
 
-#### **Result**
-- On a successful `deploy`:
-  - Updates the `k8s-demo-app` Helm release with the latest Docker image.
-- On a `deploy` failure:
-  - Automatically rolls back to the previous Helm release.
-
----
-
-### **Triggering the Workflow**
+#### **Triggering the Workflow**
 
 1. Run the workflow manually by providing a version (e.g., `v1.0.0`) in the GitHub Actions UI.
 2. If the `deploy` step fails, the `rollback` job will execute automatically.
 3. We can also "manually" rollback but just providing a previous version.
 
----
-
-### **Testing the Rollback**
+#### **Testing the Rollback**
 
 To test the rollback:
 1. Introduce an intentional error in the Helm chart or deployment.
 2. Trigger the workflow.
 3. Verify that the rollback occurs automatically after the failure.
 
+
+### **Deploy Feature Branch**
+
+This GitHub Action is designed to automate the deployment and cleanup of Kubernetes resources for feature branches in a repository. It triggers on:
+1. **Push to a `feature/*` branch**: Deploys resources for the feature branch.
+2. **Delete a `feature/*` branch**: Cleans up the deployed resources.
+
+#### **Key Jobs**
+
+1. **`deploy_feature`**
+   - **Triggered on `push` to `feature/*` branches.**
+   - **Purpose**: Deploy resources for a feature branch.
+   - **Steps**:
+     - **Checkout Code**: Fetches the repository code.
+     - **Extract Branch Name**: Determines the branch name for resource isolation.
+     - **AWS Configuration**: Configures AWS credentials for Kubernetes interaction.
+     - **Docker Login**: Authenticates with GitHub Container Registry (GHCR).
+     - **Build and Push Docker Image**: Builds a Docker image tagged with the branch name and pushes it to GHCR.
+     - **Set Up Kubernetes and Helm**: Installs and configures `kubectl` and `helm`.
+     - **Create Namespace**: Creates a temporary Kubernetes namespace named after the branch.
+     - **Deploy Helm Chart**: Deploys the application into the branch-specific namespace using Helm.
+
+2. **`cleanup_feature`**
+   - **Triggered on `delete` of a `feature/*` branch.**
+   - **Purpose**: Clean up resources associated with the deleted branch.
+   - **Steps**:
+     - **Checkout Code**: Fetches the repository code.
+     - **Extract Deleted Branch Name**: Determines the branch name for identifying the namespace and resources to delete.
+     - **AWS Configuration**: Configures AWS credentials for Kubernetes interaction.
+     - **Set Up Kubernetes and Helm**: Installs and configures `kubectl` and `helm`.
+     - **Delete Helm Release**: Uninstalls the Helm release associated with the branch.
+     - **Delete Namespace**: Deletes the branch-specific Kubernetes namespace and all resources within it.
+
+#### **Key Features**
+- **Temporary Namespace for Isolation**:
+  - Each feature branch deployment is isolated in its own Kubernetes namespace named after the branch.
+- **Automatic Cleanup**:
+  - Deletes all resources and the namespace when the branch is deleted.
+- **Branch-Specific Docker Images**:
+  - Builds and tags Docker images with the branch name for deployment.
+
+#### **Use Cases**
+1. **Feature Development**:
+   - Automatically deploys a feature branch for testing in an isolated environment.
+2. **Cleanup on Branch Deletion**:
+   - Ensures no leftover resources remain when a feature branch is removed.
