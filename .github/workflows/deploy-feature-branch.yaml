@@ -1,10 +1,10 @@
 name: Deploy Feature Branch
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feature/*
-
   delete:
     branches:
       - feature/*
@@ -92,7 +92,7 @@ jobs:
       # Extract the deleted branch name
       - name: Get deleted branch name
         id: deleted_branch
-        run: echo "branch_name=${GITHUB_REF_NAME##*/}" >> $GITHUB_ENV
+        run: echo "branch_name=${{ github.event.ref##*/ }}" >> $GITHUB_ENV
 
       # Configure AWS credentials
       - name: Configure AWS Credentials
