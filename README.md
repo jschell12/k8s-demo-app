@@ -8,7 +8,6 @@ The application is also published as a container image [quay.io/stepanstipl/k8s-
 
 ![screenshot](imgs/screenshot.png)
 
-
 ### Deployment
 
 The application exposes health-check `/healthz` endpoint.
