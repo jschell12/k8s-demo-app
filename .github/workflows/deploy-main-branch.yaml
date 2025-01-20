@@ -72,6 +72,8 @@ jobs:
     needs: deploy_main
     if: failure() # Only run rollback if the deploy_main job fails
     runs-on: ubuntu-latest
+    environment: dev
+
 
     steps:
       # Checkout the repository
