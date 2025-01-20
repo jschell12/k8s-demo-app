@@ -5,10 +5,15 @@ on:
     branches:
       - feature/*
 
+  delete:
+    branches:
+      - feature/*
+
 jobs:
   deploy:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: dev # Specify the environment here
+    environment: dev
 
     steps:
       # Checkout the repository
@@ -18,7 +23,7 @@ jobs:
       # Extract the current branch name
       - name: Determine current branch
         id: current_branch
-        run: echo "branch_name=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+        run: echo "branch_name=${GITHUB_REF_NAME##*/}" >> $GITHUB_ENV
 
       # Configure AWS credentials
       - name: Configure AWS Credentials
@@ -57,13 +62,63 @@ jobs:
         with:
           version: 'latest'
 
+      # Create a temporary namespace
+      - name: Create namespace
+        run: |
+          kubectl create namespace ${{ env.branch_name }}
+
       # Deploy the Helm chart
       - name: Deploy Helm chart
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           export KUBECONFIG=kubeconfig
           helm upgrade --force --install k8s-demo-app ./charts/k8s-demo-app \
-            --namespace default \
+            --namespace ${{ env.branch_name }} \
             --set image.repository=ghcr.io/${{ github.repository_owner }}/k8s-demo-app \
             --set image.tag=${{ env.branch_name }} \
             --wait
+
+  cleanup:
+    if: github.event_name == 'delete'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Extract the deleted branch name
+      - name: Get deleted branch name
+        id: deleted_branch
+        run: echo "branch_name=${GITHUB_REF_NAME##*/}" >> $GITHUB_ENV
+
+      # Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      # Set up Kubernetes and Helm
+      - name: Set up Kubernetes
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      # Delete Helm release
+      - name: Delete Helm release
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+          helm uninstall k8s-demo-app --namespace ${{ env.branch_name }}
+
+      # Delete namespace
+      - name: Delete namespace
+        run: |
+          kubectl delete namespace ${{ env.branch_name }}
