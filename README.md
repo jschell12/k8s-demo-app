@@ -85,6 +85,9 @@ $ helm install metrics-server metrics-server/metrics-server \
 ```sh
 $ for i in {1..100000000}; do wget -q -O- http://k8s-demo-app-chart-k8s-demo-app & done
 ```
+![Screenshot 2025-01-20 at 7 27 37 PM](https://github.com/user-attachments/assets/c19adf14-bcab-44dd-9372-4ad284957029)
+![Screenshot 2025-01-20 at 7 28 13 PM](https://github.com/user-attachments/assets/57c6e537-b36e-4d75-925c-e0252fc4920d)
+
 ---
 ## Github Actions
 
