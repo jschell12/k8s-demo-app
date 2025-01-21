@@ -105,11 +105,11 @@ resource "aws_iam_role" "sa_role" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect    = "Allow"
+        Effect = "Allow"
         Principal = {
           Federated = data.aws_iam_openid_connect_provider.oidc_provider.arn
         }
-        Action    = "sts:AssumeRoleWithWebIdentity"
+        Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
             "${data.aws_iam_openid_connect_provider.oidc_provider.url}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
@@ -127,14 +127,14 @@ resource "aws_iam_role_policy_attachment" "policy_attachment" {
 }
 
 resource "aws_iam_role_policy" "eks_node_inline_policy" {
-  name   = "EKSNodeInlinePolicy"
-  role   = aws_iam_role.node_group.name
+  name = "EKSNodeInlinePolicy"
+  role = aws_iam_role.node_group.name
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement: [
+    Statement : [
       {
-        Effect: "Allow",
-        Action: [
+        Effect : "Allow",
+        Action : [
           "ec2:CreateTags",
           "ec2:DetachVolume",
           "ec2:AttachVolume",
@@ -150,9 +150,10 @@ resource "aws_iam_role_policy" "eks_node_inline_policy" {
           "ec2:DeleteVolume",
           "ec2:CreateReplaceRootVolumeTask",
           "ec2:DescribeVolumeStatus",
-          "ec2:DescribeVolumes"
+          "ec2:DescribeVolumes",
+          "ec2:DescribeAvailabilityZones",
         ],
-        Resource: "*"
+        Resource : "*"
       }
     ]
   })

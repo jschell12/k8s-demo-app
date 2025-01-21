@@ -74,7 +74,7 @@ jobs:
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           export KUBECONFIG=kubeconfig
-          helm upgrade --force --install k8s-demo-app ./chart \
+          helm upgrade --force --install k8s-demo-app ./charts/k8s-demo-app \
             --namespace ${{ env.branch_name }} \
             --set image.repository=ghcr.io/${{ github.repository_owner }}/k8s-demo-app \
             --set image.tag=${{ env.branch_name }} \

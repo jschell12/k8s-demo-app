@@ -1,0 +1,3 @@
+
+  annotations:
+    eks.amazonaws.com/role-arn:  arn:aws:iam::895879716483:role/aws-load-balancer-controller-eks-joshua-schell
