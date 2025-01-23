@@ -108,15 +108,20 @@ This GitHub Action automates the deployment and rollback of the main branch. It 
        - Configures AWS credentials for interacting with Kubernetes in AWS.
      - **Docker Login**:
        - Authenticates with GitHub Container Registry (GHCR) using `GITHUB_TOKEN`.
-     - **Build and Push Docker Image**:
+     - **Build Docker Image**:
        - Builds a Docker image tagged with the provided `version` and `latest`.
+     - **Push Docker Image**:
        - Pushes the images to GHCR.
+     - **Create a Git Tag**:
+       - Tags the repository with the provided version and pushes the tag. 
      - **Set Up Kubernetes and Helm**:
        - Installs and configures `kubectl` and `helm` for deployment.
      - **Deploy Helm Chart**:
        - Deploys or upgrades the `k8s-demo-app` Helm chart in the `default` namespace.
        - Configures the chart to use the latest Docker image and waits for the deployment to complete.
        - **Error Handling**: Uses `continue-on-error: true` to allow the job to proceed to the rollback step if deployment fails.
+     - **Create a GitHub Release**:
+       - Creates a GitHub release corresponding to the provided version.
 
 2. **`rollback_main`**
    - **Triggered if `deploy_main` fails (`if: failure()`).**
@@ -140,6 +145,13 @@ This GitHub Action automates the deployment and rollback of the main branch. It 
   - Targets the `default` namespace in the Kubernetes `dev` environment.
 - **Versioned and Latest Docker Images**:
   - Builds and tags Docker images with both the specified version and `latest`.
+- **Auditing Changes**:
+  
+  The **"Create a Git Tag"** and **"Create a GitHub Release"** steps help maintain an audit log by:
+  - Git Tag: Snapshots the repository at a specific version. It also Tracks the exact commit deployed and allows comparisons between versions.
+  - GitHub Release: Adds context to the tag with release notes, changes, and metadata and provides a clear timeline of deployments with documented changes.
+  
+  Together, they ensure traceability, accountability, and compliance, creating an immutable history of deployments.
 
 #### **Use Cases**
 1. **Main Branch Deployment**:
